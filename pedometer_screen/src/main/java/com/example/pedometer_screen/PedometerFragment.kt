@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.example.database.di.DataBaseModule
 import com.example.pedometer_screen.databinding.FragmentPedometerBinding
 import com.example.pedometer_screen.di.DaggerPedometerComponent
 import com.example.pedometer_screen.di.PedometerComponent
@@ -37,7 +38,10 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
         val pedometerComponentDependencies =
             (context.applicationContext as PedometerComponentDependenciesProvider).getPedometerComponentDependencies()
         pedometerComponent = DaggerPedometerComponent.builder()
-            .pedometerComponentDependencies(pedometerComponentDependencies).build()
+            .pedometerComponentDependencies(pedometerComponentDependencies)
+            .dataBaseModule(DataBaseModule(requireContext()))
+            .build()
+
         pedometerComponent.injectPedometerFragment(this)
         vmFactory = pedometerComponent.getViewModelFactory()
         vm = ViewModelProvider(this, vmFactory)[PedometerViewModel::class.java]
@@ -60,10 +64,19 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
         vm.count.observe(viewLifecycleOwner) {
             binding.counterTv.text = it.toString()
         }
+
+        vm.isUpdatedCounter.observe(viewLifecycleOwner) {
+            vm.getDataFromDatabase()
+        }
+
+        vm.previousSteps.observe(viewLifecycleOwner) {
+            binding.previousStepsCountTv.text =
+                requireContext().getString(R.string.steps_number_for_yesterday, it.stepsCount)
+        }
     }
 
     private fun requestPermission() {
-        val permission =( Manifest.permission.ACTIVITY_RECOGNITION)
+        val permission = (Manifest.permission.ACTIVITY_RECOGNITION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val requestPermissionLauncher =
                 registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->

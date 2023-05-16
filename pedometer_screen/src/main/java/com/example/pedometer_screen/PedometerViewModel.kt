@@ -3,29 +3,79 @@ package com.example.pedometer_screen
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
-import io.reactivex.disposables.Disposable
+import com.example.pedometer_screen.domain.models.PedometerModel
+import com.example.pedometer_screen.domain.use_cases.GetDateFromDbUseCase
+import io.reactivex.disposables.CompositeDisposable
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 
-class PedometerViewModel(private val useCase: GetStepsCounterUseCase) : ViewModel() {
+class PedometerViewModel(
+    private val useCase: GetStepsCounterUseCase,
+    private val getDataBaseUseCase: GetDateFromDbUseCase
+) : ViewModel() {
 
     private val _count = MutableLiveData<Int>()
     val count: LiveData<Int> = _count
-    private var disposable: Disposable? = null
+
+    private val _isUpdatedCounter = MutableLiveData<Boolean>()
+    val isUpdatedCounter: LiveData<Boolean> = _isUpdatedCounter
+
+    private val _previousSteps = MutableLiveData<PedometerModel>()
+    val previousSteps: LiveData<PedometerModel> = _previousSteps
+
+    private var disposable = CompositeDisposable()
+
+    private val handler = CoroutineExceptionHandler { _, exception ->
+        println("CoroutineExceptionHandler got $exception")
+    }
 
     init {
         getStepsCount()
+        subscribeOnUpdateCounter()
+    }
+
+    fun getDataFromDatabase() {
+        viewModelScope.launch(handler + Dispatchers.IO) {
+            _previousSteps.postValue(
+                getDataBaseUseCase.getDataFromDb().last {
+                    it.date == getCurrentDate()
+                }
+            )
+        }
+    }
+
+    private fun getCurrentDate(): String {
+        val currentDate = Date()
+        val formatter = SimpleDateFormat(DATE_FORMAT)
+        return formatter.format(currentDate)
     }
 
     private fun getStepsCount() {
-        disposable = useCase.getCountSubject()
+        disposable.add(useCase.getCountSubject()
             .subscribe {
                 _count.postValue(it)
-            }
+            })
+    }
+
+    private fun subscribeOnUpdateCounter() {
+        disposable.add(useCase.getUpdateSubject()
+            .subscribe {
+                _isUpdatedCounter.postValue(it)
+            })
     }
 
     override fun onCleared() {
         super.onCleared()
-        disposable?.dispose()
-        disposable = null
+        disposable.clear()
+        disposable.dispose()
+    }
+
+    private companion object {
+        private const val DATE_FORMAT = "dd.MM.yyyy"
     }
 }

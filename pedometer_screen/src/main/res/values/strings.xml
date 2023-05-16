@@ -2,4 +2,5 @@
 <resources>
     <string name="steps_per_day">Шагов за день</string>
     <string name="zero">0</string>
+    <string name="steps_number_for_yesterday">Количество шагов вчера\n%d</string>
 </resources>

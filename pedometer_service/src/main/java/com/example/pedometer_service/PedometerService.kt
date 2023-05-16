@@ -16,9 +16,12 @@ import android.os.IBinder
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
+import com.example.database.di.DataBaseModule
 import com.example.pedometer_service.di.DaggerPedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponentDependenciesProvider
+import com.example.pedometer_service.domain.use_cases.InitializeResetStepCounterWorkerUseCase
+import com.example.pedometer_service.domain.use_cases.SaveDataToDbUseCase
 import javax.inject.Inject
 
 
@@ -26,7 +29,6 @@ class PedometerService : Service(), SensorEventListener {
 
     private var sensorManager: SensorManager? = null
     private var stepSensor: Sensor? = null
-    private var previousSteps: Int = 0
     private var currentSteps: Int? = 0
     private var totalStepsCount: Int = 0
 
@@ -34,6 +36,13 @@ class PedometerService : Service(), SensorEventListener {
 
     @Inject
     lateinit var useCase: GetStepsCounterUseCase
+
+    @Inject
+    lateinit var initializeWorkerUseCase: InitializeResetStepCounterWorkerUseCase
+
+    @Inject
+    lateinit var saveDataToDbUseCase: SaveDataToDbUseCase
+
     private lateinit var sharedPreferences: SharedPreferences
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -44,6 +53,7 @@ class PedometerService : Service(), SensorEventListener {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == INTENT_ACTION) {
                 registerPedometer()
+                initializeWorkerUseCase.initializeResetStepCounter()
             }
         }
     }
@@ -60,7 +70,7 @@ class PedometerService : Service(), SensorEventListener {
         registerComponent()
         sharedPreferences = getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
         createSensorManager()
-        getSPreviousTotalStepsCount()
+        getTotalStepsCount()
     }
 
     private fun registerComponent() {
@@ -69,6 +79,7 @@ class PedometerService : Service(), SensorEventListener {
                 .getPedometerServiceComponentDependencies()
         pedometerServiceComponent = DaggerPedometerServiceComponent.builder()
             .pedometerServiceComponentDependencies(pedometerComponentDependencies)
+            .dataBaseModule(DataBaseModule(this))
             .build()
         pedometerServiceComponent.injectPedometerService(this)
     }
@@ -79,12 +90,11 @@ class PedometerService : Service(), SensorEventListener {
         if (stepSensor == null) {
             showToast(R.string.pedometer_sensor_is_not_available)
             stopSelf()
-        } else {
-            if (!isPermissionGranted()) {
-                registerPedometer()
-            }
         }
-
+        if (!isPermissionGranted()) {
+            registerPedometer()
+            initializeWorkerUseCase.initializeResetStepCounter()
+        }
     }
 
     private fun isPermissionGranted(): Boolean {
@@ -101,20 +111,20 @@ class PedometerService : Service(), SensorEventListener {
             showToast(R.string.pedometer_sensor_is_not_available)
         } else {
             sensorManager?.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
-            useCase.setStepsToCountSubject(previousSteps)
+            useCase.setStepsToCountSubject(getPreviousStepsCount())
         }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (stepSensor == event?.sensor) {
             val steps = event?.values?.get(0)?.toInt() ?: 0
-            currentSteps = steps - totalStepsCount + previousSteps
+            currentSteps = steps - totalStepsCount + getPreviousStepsCount()
             currentSteps?.let {
                 useCase.setStepsToCountSubject(it)
-                previousSteps = it
+                updatePreviousSteps(it)
+                totalStepsCount = steps
+                saveStepsCount(previousSteps = it, totalSteps = totalStepsCount)
             }
-            totalStepsCount = steps
-            saveStepsCount(previousSteps = previousSteps, totalSteps = totalStepsCount)
         }
     }
 
@@ -132,9 +142,12 @@ class PedometerService : Service(), SensorEventListener {
             .apply()
     }
 
-    private fun getSPreviousTotalStepsCount() {
+    private fun getTotalStepsCount() {
         totalStepsCount = sharedPreferences.getInt(TOTAL_STEPS_TAG, 0)
-        previousSteps = sharedPreferences.getInt(PREVIOUS_STEPS_TAG, 0)
+    }
+
+    private fun getPreviousStepsCount(): Int {
+        return sharedPreferences.getInt(PREVIOUS_STEPS_TAG, 0)
     }
 
 
@@ -145,6 +158,7 @@ class PedometerService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         sensorManager?.unregisterListener(this)
+        initializeWorkerUseCase.cancel()
     }
 
     private companion object {
