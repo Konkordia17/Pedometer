@@ -1,16 +1,11 @@
 package com.example.pedometer_screen
 
-import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.database.di.DataBaseModule
@@ -28,10 +23,16 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
     @Inject
     lateinit var vmFactory: PedometerViewModelFactory
     lateinit var vm: PedometerViewModel
+    private lateinit var sharedPreferences: SharedPreferences
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
         registerDependencies(context)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        sharedPreferences = requireContext().getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
     }
 
     private fun registerDependencies(context: Context) {
@@ -56,8 +57,8 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requestPermission()
         observeLiveData()
+        binding.counterTv.text = getPreviousStepsCount().toString()
     }
 
     private fun observeLiveData() {
@@ -75,31 +76,13 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
         }
     }
 
-    private fun requestPermission() {
-        val permission = (Manifest.permission.ACTIVITY_RECOGNITION)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val requestPermissionLauncher =
-                registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-                    if (isGranted) {
-                        val intent = Intent(INTENT_ACTION)
-                        requireActivity().sendBroadcast(intent)
-                    } else {
-                        println()
-                    }
-                }
-
-            if (ContextCompat.checkSelfPermission(
-                    requireActivity(), permission
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissionLauncher.launch(permission)
-            }
-        }
+    private fun getPreviousStepsCount(): Int {
+        return sharedPreferences.getInt(PREVIOUS_STEPS_TAG, 0)
     }
 
     companion object {
-        private const val INTENT_ACTION = "com.example.ACTION_CUSTOM_BROADCAST"
-
+        private const val PREVIOUS_STEPS_TAG = "previousSteps"
+        private const val PREFS_TAG = "prefs"
         fun newInstance(): PedometerFragment {
             return PedometerFragment()
         }

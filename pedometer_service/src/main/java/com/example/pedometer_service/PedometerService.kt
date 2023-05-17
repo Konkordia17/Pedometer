@@ -1,6 +1,9 @@
 package com.example.pedometer_service
 
 import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -12,8 +15,10 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
 import com.example.database.di.DataBaseModule
@@ -59,6 +64,8 @@ class PedometerService : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val notification = createNotification()
+        startForeground(NOTIFICATION_ID, notification)
         val filter = IntentFilter()
         filter.addAction(INTENT_ACTION)
         registerReceiver(receiver, filter)
@@ -71,6 +78,26 @@ class PedometerService : Service(), SensorEventListener {
         sharedPreferences = getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
         createSensorManager()
         getTotalStepsCount()
+    }
+
+    private fun createNotification(): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel =
+                NotificationChannel(
+                    CHANNEL_ID,
+                    CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
+            val notificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.pedometer))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        return notificationBuilder.build()
     }
 
     private fun registerComponent() {
@@ -118,10 +145,13 @@ class PedometerService : Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (stepSensor == event?.sensor) {
             val steps = event?.values?.get(0)?.toInt() ?: 0
-            currentSteps = steps - totalStepsCount + getPreviousStepsCount()
+            currentSteps = if (steps < totalStepsCount) {
+                steps + getPreviousStepsCount()
+            } else {
+                steps - totalStepsCount + getPreviousStepsCount()
+            }
             currentSteps?.let {
                 useCase.setStepsToCountSubject(it)
-                updatePreviousSteps(it)
                 totalStepsCount = steps
                 saveStepsCount(previousSteps = it, totalSteps = totalStepsCount)
             }
@@ -162,6 +192,9 @@ class PedometerService : Service(), SensorEventListener {
     }
 
     private companion object {
+        private const val CHANNEL_ID = "channel_id"
+        private const val CHANNEL_NAME = "Channel Name"
+        private const val NOTIFICATION_ID = 1
         private const val PREFS_TAG = "prefs"
         private const val INTENT_ACTION = "com.example.ACTION_CUSTOM_BROADCAST"
         private const val TOTAL_STEPS_TAG = "totalSteps"

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Pedometer</string>
+    <string name="need_accept_permission">"Для работы приложения необходимо подтвердить все разрешения"</string>
 </resources>

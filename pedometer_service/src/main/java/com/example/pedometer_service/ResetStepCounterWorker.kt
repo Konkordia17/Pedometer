@@ -56,6 +56,11 @@ class ResetStepCounterWorker(
 
     }
 
+    override fun onStopped() {
+        super.onStopped()
+        saveDataToDbUseCase.cancelScope()
+    }
+
     private fun resetStepCounter() {
         sharedPreferences.edit().putInt(PREVIOUS_STEPS_TAG, 0)
             .apply()
