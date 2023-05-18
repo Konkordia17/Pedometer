@@ -2,15 +2,21 @@ package com.example.pedometer
 
 import android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
 import android.Manifest.permission.ACTIVITY_RECOGNITION
+import android.Manifest.permission.POST_NOTIFICATIONS
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import com.example.pedometer_service.PedometerService
+import com.example.pedometer_service.PedometerService.Companion.NOTIFICATION_INTENT_NAME
 import com.github.terrakok.cicerone.NavigatorHolder
 import com.github.terrakok.cicerone.Router
 import com.github.terrakok.cicerone.androidx.AppNavigator
@@ -44,23 +50,40 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PedometerService.NOTIFICATION_ACTION) {
+                val steps = intent.getIntExtra(NOTIFICATION_INTENT_NAME, 0)
+                router.replaceScreen(screen = Screen().pedometerFragment(steps))
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayShowTitleEnabled(false)
         (application as App).appComponent.injectMainActivity(this)
         navigatorHolder.setNavigator(navigator)
-        router.replaceScreen(Screens().pedometerFragment())
+        router.replaceScreen(Screen().maxStepsFragment())
 
         val serviceIntent = Intent(this, PedometerService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         requestPermissions()
+
+        val filter = IntentFilter()
+        filter.addAction(PedometerService.NOTIFICATION_ACTION)
+        registerReceiver(receiver, filter)
     }
 
     private fun requestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val permissionsToRequest = arrayOf(
                 ACCESS_BACKGROUND_LOCATION,
-                ACTIVITY_RECOGNITION
+                ACTIVITY_RECOGNITION,
+                POST_NOTIFICATIONS
             )
             val permissionsNotGranted = mutableListOf<String>()
 
@@ -82,7 +105,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(receiver)
+    }
+
     companion object {
-        private const val INTENT_ACTION = "com.example.ACTION_CUSTOM_BROADCAST"
+        private const val INTENT_ACTION = "ACTION_CUSTOM_BROADCAST"
     }
 }

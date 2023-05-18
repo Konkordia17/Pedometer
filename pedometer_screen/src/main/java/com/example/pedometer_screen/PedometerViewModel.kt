@@ -69,6 +69,10 @@ class PedometerViewModel(
             })
     }
 
+    fun updateMaxSteps(maxSteps: Int) {
+        useCase.setMaxSteps(maxSteps)
+    }
+
     override fun onCleared() {
         super.onCleared()
         disposable.clear()

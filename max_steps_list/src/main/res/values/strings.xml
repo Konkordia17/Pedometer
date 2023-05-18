@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lets_choose_steps_number">Давайте выберем целевое количество шагов</string>
+    <string name="input_custom_value">Введите свое значение</string>
+    <string name="choose">Выбрать</string>
+    <string name="incorrect_input">Некорректный ввод</string>
+
+    <string-array name="level">
+        <item>Новичок</item>
+        <item>Бывалый</item>
+        <item>Подающий надежды</item>
+        <item>Любитель</item>
+        <item>Профи</item>
+        <item>Покоритель вершин</item>
+    </string-array>
+</resources>

@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -15,8 +16,12 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -27,6 +32,7 @@ import com.example.pedometer_service.di.PedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponentDependenciesProvider
 import com.example.pedometer_service.domain.use_cases.InitializeResetStepCounterWorkerUseCase
 import com.example.pedometer_service.domain.use_cases.SaveDataToDbUseCase
+import io.reactivex.disposables.Disposable
 import javax.inject.Inject
 
 
@@ -36,6 +42,8 @@ class PedometerService : Service(), SensorEventListener {
     private var stepSensor: Sensor? = null
     private var currentSteps: Int? = 0
     private var totalStepsCount: Int = 0
+    private var isMaxStepsChanged: Boolean = false
+    private var chosenStepsCount = 0
 
     private lateinit var pedometerServiceComponent: PedometerServiceComponent
 
@@ -49,6 +57,7 @@ class PedometerService : Service(), SensorEventListener {
     lateinit var saveDataToDbUseCase: SaveDataToDbUseCase
 
     private lateinit var sharedPreferences: SharedPreferences
+    private var disposable: Disposable? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -78,19 +87,15 @@ class PedometerService : Service(), SensorEventListener {
         sharedPreferences = getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
         createSensorManager()
         getTotalStepsCount()
+        observeMaxStepsChange()
     }
 
     private fun createNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel =
-                NotificationChannel(
-                    CHANNEL_ID,
-                    CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
+            val channel = createNotificationChannel(null)
             val notificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+            channel?.let { notificationManager.createNotificationChannel(it) }
         }
 
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -132,6 +137,7 @@ class PedometerService : Service(), SensorEventListener {
     }
 
     private fun registerPedometer() {
+        Log.d("TAGF", "registerPedometer")
         val stepSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         if (stepSensor == null) {
@@ -143,6 +149,7 @@ class PedometerService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
+        Log.d("TAGF", "onSensorChanged  ${event?.sensor}")
         if (stepSensor == event?.sensor) {
             val steps = event?.values?.get(0)?.toInt() ?: 0
             currentSteps = if (steps < totalStepsCount) {
@@ -154,8 +161,74 @@ class PedometerService : Service(), SensorEventListener {
                 useCase.setStepsToCountSubject(it)
                 totalStepsCount = steps
                 saveStepsCount(previousSteps = it, totalSteps = totalStepsCount)
+                if (it >= chosenStepsCount && it != 0 && isMaxStepsChanged) {
+                    createMaxStepsNotification()
+                    isMaxStepsChanged = false
+                }
             }
         }
+    }
+
+    private fun observeMaxStepsChange() {
+        disposable = useCase.getUpdatedMaxStepsSubject().subscribe {
+            isMaxStepsChanged = chosenStepsCount != it
+            chosenStepsCount = it
+        }
+    }
+
+    private fun createMaxStepsNotification() {
+        val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val channel = createNotificationChannel(soundUri)
+
+        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_athlete)
+            .setContentTitle(this.getString(R.string.hooray))
+            .setContentText(this.getString(R.string.achievement_by_steps))
+            .setContentIntent(createIntent())
+            .setVibrate(longArrayOf(100, 200, 300, 400, 500))
+            .setSound(soundUri)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+
+        val notificationManager =
+            this.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationBuilder.setChannelId(CHANNEL_ID)
+            channel?.let { notificationManager.createNotificationChannel(it) }
+        }
+
+        notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
+    }
+
+    private fun createNotificationChannel(soundUri: Uri?): NotificationChannel? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance)
+            channel.apply {
+                enableVibration(true)
+                vibrationPattern = longArrayOf(100, 200, 300, 400, 500)
+            }
+            soundUri?.let {
+                channel.setSound(
+                    soundUri,
+                    AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
+                )
+            }
+            channel
+        } else {
+            null
+        }
+    }
+
+    private fun createIntent(): PendingIntent {
+        val intent = Intent(NOTIFICATION_ACTION)
+        intent.putExtra(NOTIFICATION_INTENT_NAME, chosenStepsCount)
+        return PendingIntent.getBroadcast(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -191,12 +264,14 @@ class PedometerService : Service(), SensorEventListener {
         initializeWorkerUseCase.cancel()
     }
 
-    private companion object {
+    companion object {
+        const val NOTIFICATION_ACTION = "NOTIFICATION_ACTION"
+        const val NOTIFICATION_INTENT_NAME = "notification intent"
         private const val CHANNEL_ID = "channel_id"
         private const val CHANNEL_NAME = "Channel Name"
         private const val NOTIFICATION_ID = 1
         private const val PREFS_TAG = "prefs"
-        private const val INTENT_ACTION = "com.example.ACTION_CUSTOM_BROADCAST"
+        private const val INTENT_ACTION = "ACTION_CUSTOM_BROADCAST"
         private const val TOTAL_STEPS_TAG = "totalSteps"
         private const val PREVIOUS_STEPS_TAG = "previousSteps"
     }

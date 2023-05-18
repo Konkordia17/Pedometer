@@ -10,4 +10,7 @@ interface GetStepsCounterUseCase {
 
     fun getUpdateSubject(): PublishSubject<Boolean>
     fun isUpdatedCounts(isUpdated: Boolean)
+
+    fun getUpdatedMaxStepsSubject(): PublishSubject<Int>
+    fun setMaxSteps(maxSteps: Int)
 }

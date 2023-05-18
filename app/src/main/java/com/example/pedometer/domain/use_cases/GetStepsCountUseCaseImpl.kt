@@ -7,6 +7,7 @@ import io.reactivex.subjects.PublishSubject
 class GetStepsCountUseCaseImpl : GetStepsCounterUseCase {
     private val counterSubject: PublishSubject<Int> = PublishSubject.create()
     private val isUpdatedCounterSubject: PublishSubject<Boolean> = PublishSubject.create()
+    private val updatedMaxSteps: PublishSubject<Int> = PublishSubject.create()
 
     override fun getCountSubject(): PublishSubject<Int> {
         return counterSubject
@@ -22,5 +23,13 @@ class GetStepsCountUseCaseImpl : GetStepsCounterUseCase {
 
     override fun isUpdatedCounts(isUpdated: Boolean) {
         isUpdatedCounterSubject.onNext(isUpdated)
+    }
+
+    override fun getUpdatedMaxStepsSubject(): PublishSubject<Int> {
+        return updatedMaxSteps
+    }
+
+    override fun setMaxSteps(maxSteps: Int) {
+        updatedMaxSteps.onNext(maxSteps)
     }
 }

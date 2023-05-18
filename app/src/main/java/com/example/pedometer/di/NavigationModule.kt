@@ -1,6 +1,7 @@
 package com.example.pedometer.di
 
-import com.example.pedometer.Screens
+import com.example.max_steps_list.Screens
+import com.example.pedometer.Screen
 import com.github.terrakok.cicerone.Cicerone
 import com.github.terrakok.cicerone.NavigatorHolder
 import com.github.terrakok.cicerone.Router
@@ -26,7 +27,13 @@ class NavigationModule {
 
     @Provides
     @Singleton
-    fun provideScreen(): Screens {
-        return Screens()
+    fun provideScreen(): Screen {
+        return Screen()
+    }
+
+    @Provides
+    @Singleton
+    fun provideScreens(): Screens {
+        return Screen()
     }
 }

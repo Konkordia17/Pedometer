@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.example.database.di.DataBaseModule
+import com.example.max_steps_list.di.MaxStepsListComponentDependencies
+import com.example.max_steps_list.di.MaxStepsListDependenciesProvider
 import com.example.pedometer.di.AppComponent
 import com.example.pedometer.di.DaggerAppComponent
 import com.example.pedometer.di.StepsCountModule
@@ -16,7 +18,7 @@ import com.example.pedometer_service.domain.use_cases.InitializeResetStepCounter
 import javax.inject.Inject
 
 class App : Application(), PedometerComponentDependenciesProvider,
-    PedometerServiceComponentDependenciesProvider {
+    PedometerServiceComponentDependenciesProvider, MaxStepsListDependenciesProvider {
 
     lateinit var appComponent: AppComponent
 
@@ -48,6 +50,10 @@ class App : Application(), PedometerComponentDependenciesProvider,
     }
 
     override fun getPedometerServiceComponentDependencies(): PedometerServiceComponentDependencies {
+        return appComponent
+    }
+
+    override fun maxStepsListComponentDependencies(): MaxStepsListComponentDependencies {
         return appComponent
     }
 }

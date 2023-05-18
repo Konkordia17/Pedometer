@@ -3,6 +3,7 @@ package com.example.pedometer.di
 import android.content.Context
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
 import com.example.database.di.DataBaseModule
+import com.example.max_steps_list.di.MaxStepsListComponentDependencies
 import com.example.pedometer.App
 import com.example.pedometer.MainActivity
 import com.example.pedometer.domain.use_cases.GetStepsCountUseCaseImpl
@@ -19,7 +20,7 @@ import javax.inject.Singleton
     modules = [
         NavigationModule::class, StepsCountModule::class, DataBaseModule::class]
 )
-interface AppComponent : PedometerComponentDependencies, PedometerServiceComponentDependencies {
+interface AppComponent : PedometerComponentDependencies, PedometerServiceComponentDependencies, MaxStepsListComponentDependencies {
 
     fun injectMainActivity(mainActivity: MainActivity)
 

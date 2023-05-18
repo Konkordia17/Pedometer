@@ -3,4 +3,6 @@
 
     <string name="pedometer_sensor_is_not_available">Шагомер не поддерживается Вашим устройством</string>
     <string name="pedometer">Шагомер</string>
+    <string name="hooray">Ура!!!</string>
+    <string name="achievement_by_steps">Ты достиг поставленной цели по шагам!</string>
 </resources>
