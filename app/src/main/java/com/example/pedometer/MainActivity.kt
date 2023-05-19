@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -23,6 +24,8 @@ import com.github.terrakok.cicerone.androidx.AppNavigator
 import javax.inject.Inject
 
 class MainActivity : AppCompatActivity() {
+
+    lateinit var sharedPreferences: SharedPreferences
 
     @Inject
     lateinit var navigatorHolder: NavigatorHolder
@@ -67,15 +70,22 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.setDisplayShowTitleEnabled(false)
         (application as App).appComponent.injectMainActivity(this)
         navigatorHolder.setNavigator(navigator)
-        router.replaceScreen(Screen().maxStepsFragment())
-
-        val serviceIntent = Intent(this, PedometerService::class.java)
-        ContextCompat.startForegroundService(this, serviceIntent)
+        sharedPreferences = this.getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
+        openStartScreen()
         requestPermissions()
 
         val filter = IntentFilter()
         filter.addAction(PedometerService.NOTIFICATION_ACTION)
         registerReceiver(receiver, filter)
+    }
+
+    private fun openStartScreen() {
+        val maxSteps = getChosenMaxSteps()
+        if (maxSteps == 0) {
+            router.replaceScreen(Screen().maxStepsFragment())
+        } else {
+            router.replaceScreen(screen = Screen().pedometerFragment(maxSteps))
+        }
     }
 
     private fun requestPermissions() {
@@ -105,6 +115,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getChosenMaxSteps(): Int {
+        return sharedPreferences.getInt(CHOSEN_MAX_STEPS, 0)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(receiver)
@@ -112,5 +126,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val INTENT_ACTION = "ACTION_CUSTOM_BROADCAST"
+        private const val PREFS_TAG = "prefs"
+        private const val CHOSEN_MAX_STEPS = "chosen_steps"
     }
 }

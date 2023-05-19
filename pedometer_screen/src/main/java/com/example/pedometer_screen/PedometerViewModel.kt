@@ -12,7 +12,8 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.Calendar
+import java.util.Locale
 
 class PedometerViewModel(
     private val useCase: GetStepsCounterUseCase,
@@ -37,6 +38,7 @@ class PedometerViewModel(
     init {
         getStepsCount()
         subscribeOnUpdateCounter()
+        getDataFromDatabase()
     }
 
     fun getDataFromDatabase() {
@@ -50,9 +52,11 @@ class PedometerViewModel(
     }
 
     private fun getCurrentDate(): String {
-        val currentDate = Date()
-        val formatter = SimpleDateFormat(DATE_FORMAT)
-        return formatter.format(currentDate)
+        val currentDate = Calendar.getInstance()
+        currentDate.add(Calendar.DAY_OF_MONTH, -1)
+        val yesterday = currentDate.time
+        val formatter = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
+        return formatter.format(yesterday)
     }
 
     private fun getStepsCount() {

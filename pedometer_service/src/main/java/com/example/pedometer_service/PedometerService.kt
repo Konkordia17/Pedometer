@@ -30,7 +30,6 @@ import com.example.database.di.DataBaseModule
 import com.example.pedometer_service.di.DaggerPedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponentDependenciesProvider
-import com.example.pedometer_service.domain.use_cases.InitializeResetStepCounterWorkerUseCase
 import com.example.pedometer_service.domain.use_cases.SaveDataToDbUseCase
 import io.reactivex.disposables.Disposable
 import javax.inject.Inject
@@ -51,9 +50,6 @@ class PedometerService : Service(), SensorEventListener {
     lateinit var useCase: GetStepsCounterUseCase
 
     @Inject
-    lateinit var initializeWorkerUseCase: InitializeResetStepCounterWorkerUseCase
-
-    @Inject
     lateinit var saveDataToDbUseCase: SaveDataToDbUseCase
 
     private lateinit var sharedPreferences: SharedPreferences
@@ -67,7 +63,6 @@ class PedometerService : Service(), SensorEventListener {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == INTENT_ACTION) {
                 registerPedometer()
-                initializeWorkerUseCase.initializeResetStepCounter()
             }
         }
     }
@@ -125,7 +120,6 @@ class PedometerService : Service(), SensorEventListener {
         }
         if (!isPermissionGranted()) {
             registerPedometer()
-            initializeWorkerUseCase.initializeResetStepCounter()
         }
     }
 
@@ -261,7 +255,6 @@ class PedometerService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         sensorManager?.unregisterListener(this)
-        initializeWorkerUseCase.cancel()
     }
 
     companion object {

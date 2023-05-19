@@ -13,6 +13,8 @@ import com.example.pedometer_screen.databinding.FragmentPedometerBinding
 import com.example.pedometer_screen.di.DaggerPedometerComponent
 import com.example.pedometer_screen.di.PedometerComponent
 import com.example.pedometer_screen.di.PedometerComponentDependenciesProvider
+import com.example.pedometer_screen.di.PedometerScreen
+import com.github.terrakok.cicerone.Router
 import javax.inject.Inject
 
 
@@ -25,6 +27,12 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
     lateinit var vmFactory: PedometerViewModelFactory
     lateinit var vm: PedometerViewModel
     private lateinit var sharedPreferences: SharedPreferences
+
+    @Inject
+    lateinit var router: Router
+
+    @Inject
+    lateinit var screen: PedometerScreen
 
     private var maxSteps = 0
     private var stepsColorIndicator = 1
@@ -70,6 +78,7 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
         setStepsToProgressCircle(getPreviousStepsCount())
         binding.circleProgress.progressMax = maxSteps.toFloat()
         binding.description.text = requireContext().getString(R.string.steps_per_day, maxSteps)
+        setOnClickListeners()
     }
 
     private fun observeLiveData() {
@@ -88,6 +97,17 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
         }
     }
 
+
+    private fun setOnClickListeners() {
+        binding.changeGoalBtn.setOnClickListener {
+            router.navigateTo(screen.changeMaxSteps())
+        }
+
+        binding.openStatisticBtn.setOnClickListener {
+            router.navigateTo(screen.openStatisticScreen())
+        }
+    }
+
     private fun setStepsToProgressCircle(steps: Int) {
         binding.circleProgress.apply {
             progressBarColor = resources.getColor(setProgressColor(steps), null)
@@ -97,13 +117,13 @@ class PedometerFragment : Fragment(R.layout.fragment_pedometer) {
 
     private fun setProgressColor(steps: Int): Int {
         return when {
-            steps > maxSteps -> R.color.darkRed
-            steps > (stepsColorIndicator * 6) -> R.color.red
-            steps > (stepsColorIndicator * 5) -> R.color.coral
-            steps > (stepsColorIndicator * 4) -> R.color.orange
-            steps > (stepsColorIndicator * 3) -> R.color.yellow
-            steps > (stepsColorIndicator * 2) -> R.color.yellowGreen
-            else -> R.color.green
+            steps > maxSteps -> com.example.core.R.color.darkRed
+            steps > (stepsColorIndicator * 6) -> com.example.core.R.color.red
+            steps > (stepsColorIndicator * 5) -> com.example.core.R.color.coral
+            steps > (stepsColorIndicator * 4) -> com.example.core.R.color.orange
+            steps > (stepsColorIndicator * 3) -> com.example.core.R.color.yellow
+            steps > (stepsColorIndicator * 2) -> com.example.core.R.color.yellowGreen
+            else -> com.example.core.R.color.green
         }
     }
 

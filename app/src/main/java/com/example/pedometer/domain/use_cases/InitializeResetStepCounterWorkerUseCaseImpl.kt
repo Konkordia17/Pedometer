@@ -30,7 +30,7 @@ class InitializeResetStepCounterWorkerUseCaseImpl @Inject constructor(private va
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WORK_UNIQUE_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             myWorkRequest
         )
     }
@@ -45,7 +45,14 @@ class InitializeResetStepCounterWorkerUseCaseImpl @Inject constructor(private va
         calendar.set(Calendar.MINUTE, MINUTES_OR_SECONDS_COUNT)
         calendar.set(Calendar.SECOND, MINUTES_OR_SECONDS_COUNT)
         calendar.set(Calendar.MILLISECOND, MILLISECONDS)
-        return calendar.timeInMillis - System.currentTimeMillis()
+        val timeRemainingInMillis = calendar.timeInMillis - System.currentTimeMillis()
+
+        val hours = timeRemainingInMillis / (1000 * 60 * 60)
+        val minutes = (timeRemainingInMillis % (1000 * 60 * 60)) / (1000 * 60)
+        val seconds = (timeRemainingInMillis % (1000 * 60)) / 1000
+
+        println("Оставшееся время до полуночи: $hours ч $minutes мин $seconds с")
+        return timeRemainingInMillis
     }
 
 

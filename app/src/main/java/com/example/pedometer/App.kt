@@ -1,6 +1,8 @@
 package com.example.pedometer
 
 import android.app.Application
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.example.database.di.DataBaseModule
@@ -12,6 +14,7 @@ import com.example.pedometer.di.StepsCountModule
 import com.example.pedometer_screen.di.PedometerComponentDependencies
 import com.example.pedometer_screen.di.PedometerComponentDependenciesProvider
 import com.example.pedometer_service.CommonWorkerFactory
+import com.example.pedometer_service.PedometerService
 import com.example.pedometer_service.di.PedometerServiceComponentDependencies
 import com.example.pedometer_service.di.PedometerServiceComponentDependenciesProvider
 import com.example.pedometer_service.domain.use_cases.InitializeResetStepCounterWorkerUseCase
@@ -43,6 +46,10 @@ class App : Application(), PedometerComponentDependenciesProvider,
                 .setWorkerFactory(workerFactory)
                 .build()
         )
+        val serviceIntent = Intent(this, PedometerService::class.java)
+        ContextCompat.startForegroundService(this, serviceIntent)
+
+        useCase.initializeResetStepCounter()
     }
 
     override fun getPedometerComponentDependencies(): PedometerComponentDependencies {

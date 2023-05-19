@@ -1,13 +1,15 @@
 package com.example.pedometer_service
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
 import com.example.pedometer_service.domain.use_cases.SaveDataToDbUseCase
 import com.example.pedometer_service.models.PedometerModel
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.Calendar
+import java.util.Locale
 
 
 class ResetStepCounterWorker(
@@ -21,18 +23,18 @@ class ResetStepCounterWorker(
 
     override fun doWork(): Result {
         return try {
-            resetStepCounter()
+            Log.d("TAGF", "doWork")
             saveData()
             Result.success()
         } catch (e: Throwable) {
-
+            Log.d("TAGF", "doWork  failure")
             Result.failure()
         }
     }
 
     private fun saveData() {
         val dateModel = getDate()
-        val stepsCount = sharedPreferences.getInt(TOTAL_STEPS_TAG, 0)
+        val stepsCount = sharedPreferences.getInt(PREVIOUS_STEPS_TAG, 0)
         saveDataToDbUseCase.saveData(
             PedometerModel(
                 date = dateModel.date,
@@ -41,17 +43,17 @@ class ResetStepCounterWorker(
             )
         )
         getStepsCounterUseCase.isUpdatedCounts(true)
+        resetStepCounter()
     }
 
     private fun getDate(): DateModel {
-        val currentDate = Date()
-        val formatter = SimpleDateFormat(DATE_FORMAT)
-        val formattedDate = formatter.format(currentDate)
-
-        val dateFormat = SimpleDateFormat(TIME_FORMAT)
-        val currentTime = Date()
-        val formattedTime = dateFormat.format(currentTime)
-
+        val currentDate = Calendar.getInstance()
+        currentDate.add(Calendar.DAY_OF_MONTH, -1)
+        val yesterday = currentDate.time
+        val formatter = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
+        val formattedDate = formatter.format(yesterday)
+        val dateFormat = SimpleDateFormat(TIME_FORMAT, Locale.getDefault())
+        val formattedTime = dateFormat.format(yesterday)
         return DateModel(date = formattedDate, time = formattedTime)
 
     }
@@ -69,7 +71,6 @@ class ResetStepCounterWorker(
 
     private companion object {
         private const val PREFS_TAG = "prefs"
-        private const val TOTAL_STEPS_TAG = "totalSteps"
         private const val DATE_FORMAT = "dd.MM.yyyy"
         private const val TIME_FORMAT = "HH часов mm минут ss секунд"
         private const val PREVIOUS_STEPS_TAG = "previousSteps"

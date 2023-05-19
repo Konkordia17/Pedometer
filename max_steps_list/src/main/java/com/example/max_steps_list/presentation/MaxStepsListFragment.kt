@@ -1,6 +1,7 @@
 package com.example.max_steps_list.presentation
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -23,6 +24,7 @@ class MaxStepsListFragment : Fragment(R.layout.fragment_max_list) {
     private var _binding: FragmentMaxListBinding? = null
     private val binding get() = _binding!!
     private lateinit var maxStepsComponent: MaxStepsListComponent
+    private lateinit var sharedPreferences: SharedPreferences
 
     @Inject
     lateinit var router: Router
@@ -50,6 +52,7 @@ class MaxStepsListFragment : Fragment(R.layout.fragment_max_list) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        sharedPreferences = requireContext().getSharedPreferences(PREFS_TAG, Context.MODE_PRIVATE)
         initList()
     }
 
@@ -75,11 +78,17 @@ class MaxStepsListFragment : Fragment(R.layout.fragment_max_list) {
         )
     }
 
+    private fun saveChosenMaxSteps(steps: Int) {
+        sharedPreferences.edit().putInt(CHOSEN_MAX_STEPS, steps)
+            .apply()
+    }
+
     private fun initList() {
         with(binding.maxStepsRv) {
             layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             adapter = MaxStepsListAdapter(getStepsList()) {
+                saveChosenMaxSteps(it)
                 navigateToPedometerScreen(it)
             }
         }
@@ -101,6 +110,8 @@ class MaxStepsListFragment : Fragment(R.layout.fragment_max_list) {
         private const val STEPS_25000 = 25000
         private const val STEPS_30000 = 30000
         private const val MIN_STEPS = 0
+        private const val PREFS_TAG = "prefs"
+        private const val CHOSEN_MAX_STEPS = "chosen_steps"
 
         fun newInstance(): MaxStepsListFragment {
             return MaxStepsListFragment()
