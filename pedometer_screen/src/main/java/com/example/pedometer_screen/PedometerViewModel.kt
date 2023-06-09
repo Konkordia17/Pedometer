@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
 import com.example.pedometer_screen.domain.models.PedometerModel
 import com.example.pedometer_screen.domain.use_cases.GetDateFromDbUseCase
-import io.reactivex.disposables.CompositeDisposable
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,8 +27,6 @@ class PedometerViewModel(
 
     private val _previousSteps = MutableLiveData<PedometerModel>()
     val previousSteps: LiveData<PedometerModel> = _previousSteps
-
-    private var disposable = CompositeDisposable()
 
     private val handler = CoroutineExceptionHandler { _, exception ->
         println("CoroutineExceptionHandler got $exception")
@@ -60,27 +57,25 @@ class PedometerViewModel(
     }
 
     private fun getStepsCount() {
-        disposable.add(useCase.getCountSubject()
-            .subscribe {
-                _count.postValue(it)
-            })
+        viewModelScope.launch(handler) {
+            useCase.getStepsCount()
+                .collect {
+                    _count.postValue(it)
+                }
+        }
     }
 
     private fun subscribeOnUpdateCounter() {
-        disposable.add(useCase.getUpdateSubject()
-            .subscribe {
-                _isUpdatedCounter.postValue(it)
-            })
+        viewModelScope.launch(handler) {
+            useCase.getUpdateFlow()
+                .collect {
+                    _isUpdatedCounter.postValue(it)
+                }
+        }
     }
 
     fun updateMaxSteps(maxSteps: Int) {
         useCase.setMaxSteps(maxSteps)
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        disposable.clear()
-        disposable.dispose()
     }
 
     private companion object {

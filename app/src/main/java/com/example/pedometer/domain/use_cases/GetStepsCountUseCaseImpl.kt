@@ -1,35 +1,37 @@
 package com.example.pedometer.domain.use_cases
 
 import com.example.core.domain.use_cases.GetStepsCounterUseCase
-import io.reactivex.subjects.PublishSubject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 
 class GetStepsCountUseCaseImpl : GetStepsCounterUseCase {
-    private val counterSubject: PublishSubject<Int> = PublishSubject.create()
-    private val isUpdatedCounterSubject: PublishSubject<Boolean> = PublishSubject.create()
-    private val updatedMaxSteps: PublishSubject<Int> = PublishSubject.create()
+    private val _counterFlow = MutableStateFlow(0)
+    private val _isUpdatedCounterFlow = MutableStateFlow(false)
+    private val _updatedMaxSteps = MutableStateFlow(0)
 
-    override fun getCountSubject(): PublishSubject<Int> {
-        return counterSubject
+    override fun getStepsCount(): SharedFlow<Int> {
+        return _counterFlow.asSharedFlow()
     }
 
-    override fun setStepsToCountSubject(count: Int) {
-        counterSubject.onNext(count)
+    override fun setStepsCount(count: Int) {
+        _counterFlow.value = count
     }
 
-    override fun getUpdateSubject(): PublishSubject<Boolean> {
-        return isUpdatedCounterSubject
+    override fun getUpdateFlow(): SharedFlow<Boolean> {
+        return _isUpdatedCounterFlow.asSharedFlow()
     }
 
     override fun isUpdatedCounts(isUpdated: Boolean) {
-        isUpdatedCounterSubject.onNext(isUpdated)
+        _isUpdatedCounterFlow.value = isUpdated
     }
 
-    override fun getUpdatedMaxStepsSubject(): PublishSubject<Int> {
-        return updatedMaxSteps
+    override fun getUpdatedMaxSteps(): SharedFlow<Int> {
+        return _updatedMaxSteps.asSharedFlow()
     }
 
     override fun setMaxSteps(maxSteps: Int) {
-        updatedMaxSteps.onNext(maxSteps)
+       _updatedMaxSteps.value = maxSteps
     }
 }

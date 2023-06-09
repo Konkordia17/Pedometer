@@ -31,7 +31,10 @@ import com.example.pedometer_service.di.DaggerPedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponent
 import com.example.pedometer_service.di.PedometerServiceComponentDependenciesProvider
 import com.example.pedometer_service.domain.use_cases.SaveDataToDbUseCase
-import io.reactivex.disposables.Disposable
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -53,7 +56,10 @@ class PedometerService : Service(), SensorEventListener {
     lateinit var saveDataToDbUseCase: SaveDataToDbUseCase
 
     private lateinit var sharedPreferences: SharedPreferences
-    private var disposable: Disposable? = null
+    private val handler = CoroutineExceptionHandler { _, exception ->
+        println("CoroutineExceptionHandler got $exception")
+    }
+    private val scope = CoroutineScope(handler)
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -138,7 +144,7 @@ class PedometerService : Service(), SensorEventListener {
             showToast(R.string.pedometer_sensor_is_not_available)
         } else {
             sensorManager?.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
-            useCase.setStepsToCountSubject(getPreviousStepsCount())
+            useCase.setStepsCount(getPreviousStepsCount())
         }
     }
 
@@ -152,7 +158,7 @@ class PedometerService : Service(), SensorEventListener {
                 steps - totalStepsCount + getPreviousStepsCount()
             }
             currentSteps?.let {
-                useCase.setStepsToCountSubject(it)
+                useCase.setStepsCount(it)
                 totalStepsCount = steps
                 saveStepsCount(previousSteps = it, totalSteps = totalStepsCount)
                 if (it >= chosenStepsCount && it != 0 && isMaxStepsChanged) {
@@ -164,9 +170,12 @@ class PedometerService : Service(), SensorEventListener {
     }
 
     private fun observeMaxStepsChange() {
-        disposable = useCase.getUpdatedMaxStepsSubject().subscribe {
-            isMaxStepsChanged = chosenStepsCount != it
-            chosenStepsCount = it
+        scope.launch {
+            useCase.getUpdatedMaxSteps()
+                .collect {
+                    isMaxStepsChanged = chosenStepsCount != it
+                    chosenStepsCount = it
+                }
         }
     }
 
@@ -255,6 +264,7 @@ class PedometerService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         sensorManager?.unregisterListener(this)
+        scope.cancel()
     }
 
     companion object {

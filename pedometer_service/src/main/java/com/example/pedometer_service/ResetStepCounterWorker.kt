@@ -66,7 +66,7 @@ class ResetStepCounterWorker(
     private fun resetStepCounter() {
         sharedPreferences.edit().putInt(PREVIOUS_STEPS_TAG, 0)
             .apply()
-        getStepsCounterUseCase.setStepsToCountSubject(0)
+        getStepsCounterUseCase.setStepsCount(0)
     }
 
     private companion object {

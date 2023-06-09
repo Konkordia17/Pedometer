@@ -1,16 +1,16 @@
 package com.example.core.domain.use_cases
 
-import io.reactivex.subjects.PublishSubject
+import kotlinx.coroutines.flow.SharedFlow
 
 interface GetStepsCounterUseCase {
 
-    fun getCountSubject(): PublishSubject<Int>
+    fun getStepsCount(): SharedFlow<Int>
 
-    fun setStepsToCountSubject(count: Int)
+    fun setStepsCount(count: Int)
 
-    fun getUpdateSubject(): PublishSubject<Boolean>
+    fun getUpdateFlow(): SharedFlow<Boolean>
     fun isUpdatedCounts(isUpdated: Boolean)
 
-    fun getUpdatedMaxStepsSubject(): PublishSubject<Int>
+    fun getUpdatedMaxSteps(): SharedFlow<Int>
     fun setMaxSteps(maxSteps: Int)
 }
